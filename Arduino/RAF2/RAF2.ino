@@ -19,13 +19,15 @@ CRGB leds[NUM_LEDS];
 #define BRIGHTNESS 20
 Servo azimuth;
 Servo elevation;
+int starting;
+int ctr;
+unsigned long timeMillis;
 void setup() {
   FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
 
   Serial.begin(115200);
   Serial.println("Ready Aim Fire!");
-  
 
   azimuth.attach(SERV1);
   elevation.attach(SERV2);
@@ -49,7 +51,8 @@ void setup() {
   delay(200);
   leds[0] = CRGB::Black;
   FastLED.show();
- 
+  starting = 0;
+  ctr = 0;
 }
 void chase()
 {
@@ -72,24 +75,46 @@ void chase()
 int lastx;
 int lasty;
 
-void loop() {
-
-  
- 
+void loop() { 
   int light = analogRead(LIGHT);
   int temp = analogRead(TEMP);
   //Serial.print("LIGHT: ");Serial.print(light);Serial.print(" TEMP: ");Serial.println(temp);
-   if (digitalRead(BUTTON) == LOW)
+   if (digitalRead(BUTTON) == LOW && !starting)
   {
-    Serial.println("fire!");
-    digitalWrite(SOLENOID,HIGH);
-    delay(250);
-    digitalWrite(SOLENOID,LOW);
-    chase();
-    digitalWrite(PUMP,HIGH);
-    delay(3000);
-    digitalWrite(PUMP, LOW);
-    delay(100);
+    timeMillis = millis();
+    starting = 1;
+  }
+  if(starting)
+  {
+    if(ctr == 0)
+    {
+      Serial.println("fire!");
+      digitalWrite(SOLENOID,HIGH);
+      if(millis() - timeMillis > 250)
+      {
+        digitalWrite(SOLENOID,LOW);
+        ctr = 1;
+      }
+    }
+    if(ctr == 1)
+    {
+      digitalWrite(SOLENOID,LOW);
+      chase();
+      digitalWrite(PUMP,HIGH);
+      if(millis() - timeMillis > 3000+250)
+      {
+        digitalWrite(PUMP, LOW);
+        ctr = 3;
+      }
+    }
+    if(ctr == 3)
+    {
+      if(millis() - timeMillis > 3000+250+100)
+      {
+        ctr = 0;
+        starting = 0;
+      }
+    }
   }
  int xReading,yReading;
   xReading = analogRead(JOYX);
